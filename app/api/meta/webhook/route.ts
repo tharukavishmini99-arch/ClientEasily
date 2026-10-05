@@ -3,19 +3,24 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
 
-  const mode = searchParams.get("hub.mode");
-  const token = searchParams.get("hub.verify_token");
+  const mode = searchParams.get("hub.mode")?.trim();
+  const token = searchParams.get("hub.verify_token")?.trim();
   const challenge = searchParams.get("hub.challenge");
 
   const verifyToken =
-    process.env.META_WEBHOOK_VERIFY_TOKEN;
+    process.env.META_WEBHOOK_VERIFY_TOKEN?.trim();
 
   if (
     mode === "subscribe" &&
+    token &&
+    verifyToken &&
     token === verifyToken
   ) {
     return new NextResponse(challenge || "", {
       status: 200,
+      headers: {
+        "Content-Type": "text/plain",
+      },
     });
   }
 
@@ -30,7 +35,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     console.log(
-      "Meta webhook:",
+      "Meta webhook event:",
       JSON.stringify(body)
     );
 
@@ -39,13 +44,10 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error(
-      "Meta webhook error:",
-      error
-    );
+    console.error("Meta webhook error:", error);
 
     return NextResponse.json(
-      { error: "Invalid webhook" },
+      { error: "Invalid webhook payload" },
       { status: 400 }
     );
   }
